@@ -41,6 +41,7 @@ export default function Home() {
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [checkingIds, setCheckingIds] = useState<string[]>([]);
 
   const upCount = monitors.filter(
     (monitor) => monitor.status === "up"
@@ -81,6 +82,57 @@ export default function Home() {
     setUrl("");
     setShowForm(false);
   }
+
+
+  async function checkMonitor(monitor: Monitor) {
+    if (checkingIds.includes(monitor.id)) return;
+
+    setCheckingIds((prev) => [...prev, monitor.id]);
+
+    try {
+      const response = await fetch("/api/check", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          url: monitor.url,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Check failed");
+      }
+
+      const result = await response.json();
+
+      setMonitors((prev) =>
+        prev.map((item) =>
+          item.id === monitor.id
+            ? {
+                ...item,
+                status: result.status,
+                responseTime: result.responseTime,
+                lastChecked: result.checkedAt,
+                statusCode: result.statusCode,
+              }
+            : item
+        )
+      );
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Unable to check website"
+      );
+    } finally {
+      setCheckingIds((prev) =>
+        prev.filter((id) => id !== monitor.id)
+      );
+    }
+  }
+
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
@@ -220,6 +272,15 @@ export default function Home() {
                         : `${monitor.responseTime}ms`}
                     </p>
                   </div>
+                  <button
+                    onClick={() => checkMonitor(monitor)}
+                    disabled={checkingIds.includes(monitor.id)}
+                    className="self-center rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {checkingIds.includes(monitor.id)
+                      ? "Checking..."
+                      : "Check Status"}
+                  </button>
                 </div>
               </div>
             ))}

@@ -8,4 +8,5 @@ export interface Monitor {
   uptime: number | null;
   responseTime: number | null;
   lastChecked: string | null;
+  statusCode?: number | null;
 }
