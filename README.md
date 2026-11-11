@@ -1,5 +1,3 @@
 # uptime-monitor
 
-A full-stack website monitoring dashboard that tracks uptime, downtime, and response times in real time. Copy
-
-Update
+A full-stack website monitoring dashboard that tracks uptime, downtime, and response times in real time.
