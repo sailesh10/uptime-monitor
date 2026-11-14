@@ -91,11 +91,10 @@ The application consists of three main components:
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/uptime-monitor.git
+git clone https://github.com/sailesh10/uptime-monitor.git
 cd uptime-monitor
+cd uptime-monitor-app
 ```
-
-If the Next.js application is inside a nested `uptime-monitor-app` directory, navigate into it before running the remaining commands.
 
 ### 2. Install dependencies
 
