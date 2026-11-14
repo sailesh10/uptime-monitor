@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import type { Monitor } from "@/types/monitor";
+import Link from "next/link";
 
 const initialMonitors: Monitor[] = [
   {
@@ -280,9 +281,13 @@ export default function Home() {
                   />
 
                   <div>
-                    <h3 className="font-semibold">
+                    <Link
+                      href={`/monitors/${monitor.id}`}
+                      className="font-semibold hover:text-blue-400"
+                    >
                       {monitor.name}
-                    </h3>
+                    </Link>
+
                     <p className="text-sm text-slate-400">
                       {monitor.url}
                     </p>
