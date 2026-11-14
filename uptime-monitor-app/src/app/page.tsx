@@ -139,7 +139,42 @@ export default function Home() {
   }
 
   useEffect(() => {
-    void fetchMonitors();
+    let active = true;
+  
+    async function loadMonitors() {
+      try {
+        const response = await fetch("/api/monitors", {
+          cache: "no-store",
+        });
+  
+        if (!response.ok) {
+          throw new Error("Failed to fetch monitors");
+        }
+  
+        const data: Monitor[] = await response.json();
+  
+        if (active) {
+          setMonitors(data);
+        }
+      } catch (error) {
+        console.error("Failed to load monitors:", error);
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    }
+  
+    void loadMonitors();
+  
+    const interval = setInterval(() => {
+      void loadMonitors();
+    }, 30_000);
+  
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, []);
 
   return (
