@@ -12,13 +12,39 @@ export async function GET() {
           orderBy: {
             checkedAt: "desc",
           },
-          take: 1,
         },
       },
     });
 
-    return NextResponse.json(monitors);
-  } catch {
+    const formattedMonitors = monitors.map((monitor) => {
+      const checks = monitor.healthChecks;
+      const latestCheck = checks[0];
+
+      const successfulChecks = checks.filter(
+        (check) => check.status === "up"
+      ).length;
+
+      const uptime =
+        checks.length > 0
+          ? Number(((successfulChecks / checks.length) * 100).toFixed(2))
+          : null;
+
+      return {
+        id: monitor.id,
+        name: monitor.name,
+        url: monitor.url,
+        status: latestCheck?.status ?? "pending",
+        uptime,
+        responseTime: latestCheck?.responseTime ?? null,
+        statusCode: latestCheck?.statusCode ?? null,
+        lastChecked: latestCheck?.checkedAt ?? null,
+      };
+    });
+
+    return NextResponse.json(formattedMonitors);
+  } catch (error) {
+    console.error("Failed to fetch monitors:", error);
+
     return NextResponse.json(
       { error: "Failed to fetch monitors" },
       { status: 500 }

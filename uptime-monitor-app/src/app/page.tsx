@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Monitor } from "@/types/monitor";
 
 const initialMonitors: Monitor[] = [
@@ -35,8 +35,8 @@ const initialMonitors: Monitor[] = [
 ];
 
 export default function Home() {
-  const [monitors, setMonitors] =
-    useState<Monitor[]>(initialMonitors);
+  const [monitors, setMonitors] = useState<Monitor[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
@@ -51,75 +51,60 @@ export default function Home() {
     (monitor) => monitor.status === "down"
   ).length;
 
-  function addMonitor(e: React.FormEvent<HTMLFormElement>) {
+  async function addMonitor(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-
-    const normalizedUrl = url.trim();
-
+  
     try {
-      const parsed = new URL(normalizedUrl);
-
-      if (!["http:", "https:"].includes(parsed.protocol)) {
-        throw new Error("Invalid protocol");
-      }
-    } catch {
-      alert("Enter a valid HTTP or HTTPS URL.");
-      return;
-    }
-
-    const newMonitor: Monitor = {
-      id: crypto.randomUUID(),
-      name: name.trim() || normalizedUrl,
-      url: normalizedUrl,
-      status: "pending",
-      uptime: null,
-      responseTime: null,
-      lastChecked: null,
-    };
-
-    setMonitors((prev) => [...prev, newMonitor]);
-    setName("");
-    setUrl("");
-    setShowForm(false);
-  }
-
-
-  async function checkMonitor(monitor: Monitor) {
-    if (checkingIds.includes(monitor.id)) return;
-
-    setCheckingIds((prev) => [...prev, monitor.id]);
-
-    try {
-      const response = await fetch("/api/check", {
+      const response = await fetch("/api/monitors", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          url: monitor.url,
+          name,
+          url,
         }),
       });
+  
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to add monitor");
+      }
+  
+      setName("");
+      setUrl("");
+      setShowForm(false);
+  
+      await fetchMonitors();
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Failed to add monitor"
+      );
+    }
+  }
 
+
+  async function checkMonitor(monitor: Monitor) {
+    if (checkingIds.includes(monitor.id)) return;
+  
+    setCheckingIds((prev) => [...prev, monitor.id]);
+  
+    try {
+      const response = await fetch(
+        `/api/monitors/${monitor.id}/check`,
+        {
+          method: "POST",
+        }
+      );
+  
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || "Check failed");
       }
-
-      const result = await response.json();
-
-      setMonitors((prev) =>
-        prev.map((item) =>
-          item.id === monitor.id
-            ? {
-                ...item,
-                status: result.status,
-                responseTime: result.responseTime,
-                lastChecked: result.checkedAt,
-                statusCode: result.statusCode,
-              }
-            : item
-        )
-      );
+  
+      await fetchMonitors();
     } catch (error) {
       alert(
         error instanceof Error
@@ -133,6 +118,29 @@ export default function Home() {
     }
   }
 
+
+  async function fetchMonitors() {
+    try {
+      const response = await fetch("/api/monitors", {
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch monitors");
+      }
+
+      const data: Monitor[] = await response.json();
+      setMonitors(data);
+    } catch (error) {
+      console.error("Failed to load monitors:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void fetchMonitors();
+  }, []);
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
@@ -215,6 +223,11 @@ export default function Home() {
           </div>
 
           <div className="divide-y divide-slate-800">
+            {loading && (
+              <p className="p-6 text-slate-400">
+                Loading monitors...
+              </p>
+            )}
             {monitors.map((monitor) => (
               <div
                 key={monitor.id}
@@ -284,15 +297,13 @@ export default function Home() {
                 </div>
               </div>
             ))}
-
-            {monitors.length === 0 && (
+            {!loading && monitors.length === 0 && (
               <p className="p-6 text-slate-400">
                 No monitors added yet.
               </p>
             )}
           </div>
         </section>
-
         <p className="mt-6 text-sm text-slate-500">
           Demo data only. Live monitoring will be added next.
         </p>
